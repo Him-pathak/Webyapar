@@ -1,0 +1,11 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "HTML CSS JS frontend",
+  "author": "pathak",
+  "license": "ISC",
+  "dependencies": {
+    "cropperjs": "^1.6.1",
+    "jwt-decode": "^4.0.0"
+  }
+}

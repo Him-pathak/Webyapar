@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/dist/index.umd.min.js"></script>
+    <link rel="stylesheet" href="../../CSS/styles.css">
+</head>
+
+<body>
+    <div class="container-fluid mt-5">
+        <button class="btn btn-outline-primary mb-3 px-4" style="border-width:2px"
+            onclick="window.location.href = 'http://127.0.0.1:5500/frontend/admin/login/adminLogin.html'">Back</button>
+        <table class="table table-bordered border-black">
+            <thead>
+                <tr style="">
+                    <th scope="col" class="text-center" style="border-width:3px; background-color:#EAECFF ;">User Id</th>
+                    <th scope="col" class="text-center" style="border-width:3px;background-color:#EAECFF ;">Name</th>
+                    <th scope="col" class="text-center" style="border-width:3px;background-color:#EAECFF ;">Photo</th>
+                    <th scope="col" class="text-center" style="border-width:3px;background-color:#EAECFF ;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                <!-- Dynamic table body will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="../../node_modules/jwt-decode/build/cjs/index.js"></script>
+
+    <script>
+        const handleDoneClick = async (userId) => {
+            try {
+                const response = await fetch(`http://localhost:8000/api/user/verify/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                    },
+                    body: JSON.stringify({
+                        verified: 'yes',
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to verify user');
+                }
+
+                alert('User verified successfully');
+
+                // Remove the "Done" button after successful verification
+                const doneButton = document.getElementById(`doneButton_${userId}`);
+                if (doneButton) {
+                    doneButton.parentNode.removeChild(doneButton);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Failed to verify user');
+            }
+        };
+
+        const handleDeleteClick = async (userId) => {
+            try {
+                const response = await fetch(`http://localhost:8000/api/user/reset/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                    },
+                    body: JSON.stringify({
+                        verified: 'no',
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete user');
+                }
+
+                alert('User rejected successfully');
+                window.location.reload();
+            } catch (error) {
+                console.error(error);
+                alert('Failed to delete user');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const accessToken = localStorage.getItem('accessToken');
+            if (!accessToken) window.location.href = 'http://127.0.0.1:5500/frontend/admin/login/adminLogin.html';
+            if (accessToken) {
+                const decodedToken = jwtDecode(accessToken);
+                // console.log(decodedToken);
+
+                if (decodedToken.UserInfo.role !== 'admin') {
+                    window.location.href = 'http://127.0.0.1:5500/frontend/admin/login/adminLogin.html';
+                }
+            }
+            const photoUrl = "https://img.freepik.com/free-photo/smiling-man_1098-15443.jpg?size=626&ext=jpg&ga=GA1.1.632798143.1705449600&semt=ais";
+
+            // Fetch all users
+            fetch('http://localhost:8000/api/user/getAll', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch users');
+                    }
+                    return response.json();
+                })
+                .then(users => {
+                    const userTableBody = document.getElementById('userTableBody');
+                    userTableBody.innerHTML = '';
+
+                    users.forEach(user => {
+                        const userRow = document.createElement('tr');
+                        userRow.innerHTML = `
+                            <th scope="row" class="text-center align-middle" style="border-width:3px">${user.userId}</th>
+                            <td class="text-center align-middle" style="border-width:3px">${user.name}</td>
+                            <td class="text-center align-middle" style="border-width:3px;">
+                                <img style="height: 80px; width: 80px;" src="${user.userImage}">
+                            </td>
+                            <td class="text-center align-middle w-25" style="border-width:3px">
+                                ${user.verified === 'notYet' ? (user.name !== '-' ? `
+                                    <button id="doneButton_${user.userId}" class="btn btn-outline-primary mb-3 px-4"
+                                        style="border-width:2px;" onclick="handleDoneClick('${user.userId}')">Done</button>
+                                    ` : '') : ''}
+                                
+                                <button class="btn btn-outline-primary mb-3 px-4" style="border-width:2px"
+                            onclick="handleDeleteClick('${user.userId}')">Delete</button>
+                            </td >
+                        `;
+                        userTableBody.appendChild(userRow);
+                    });
+
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert('Failed to fetch users');
+                });
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

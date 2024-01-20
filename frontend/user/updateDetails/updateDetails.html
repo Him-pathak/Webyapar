@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="../../node_modules/cropperjs/dist/cropper.min.css">
+    <link rel="stylesheet" href="../../CSS/styles.css">
+
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="text-end">
+            <button class="btn btn-outline-primary m-4 px-4" style="border-width:2px" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#offcanvasExample" aria-controls="offcanvasExample">
+                View
+            </button>
+
+            <div class="offcanvas offcanvas-end " style="width: 30%;" tabindex="-1" id="offcanvasExample"
+                aria-labelledby="offcanvasExampleLabel">
+                <div class=" text-end">
+                    <button class="btn btn-outline-primary m-4 px-4" style="border-width:2px"
+                        data-bs-dismiss="offcanvas" aria-label="Close">Back</button>
+                </div>
+                <div class="offcanvas-body px-5">
+                    <form class="text-start">
+                        <div class="form-group my-3">
+                            <label for="viewName">Name</label>
+                            <input type="text" class="form-control py-2" id="viewName" readonly>
+                        </div>
+                        <div class="form-group my-3">
+                            <label for="viewPhoto">Photo</label>
+                            <div>
+                                <img style="height: 300px; width: 100%;" id="viewPhoto" src="">
+                            </div>
+                        </div>
+
+                        <h3 class="my-5 text-success text-center" id="accepted">Accepted by Admin</h3>
+                        <h3 class="my-5 text-danger text-center" id="rejected">Not Accepted by Admin</h3>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-center align-items-center mt-5 w-100">
+            <form class="w-25" id="updateForm">
+                <div class="form-group my-3">
+                    <label for="updateName">Name</label>
+                    <input type="text" class="form-control py-2" id="updateName">
+                </div>
+                <div class="form-group my-3">
+                    <label for="updatePhoto">Photo</label>
+                    <input type="file" id="updatePhoto" name="avatar" accept="image/png, image/jpeg"
+                        onchange="displayImage(this)" style="visibility: hidden;" />
+                    <img style="height: 200px; border: 2px dashed gray; background-color: rgba(225, 225, 225, 0.956);"
+                        id="selectedImage">
+                </div>
+
+                <button type="button" class="btn btn-primary text-center w-100 py-2" onclick=handleUpdate() style="background-color: #0500FF; color: white;">Crop & Upload</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+    <script src="../../node_modules/cropperjs/dist/cropper.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            try {
+                const response = await fetch('http://localhost:8000/api/user/getOne', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user');
+                }
+
+                const user = await response.json();
+
+                const viewNameInput = document.getElementById('viewName');
+                const viewButton = document.querySelector('.btn-outline-primary');
+                const accepted = document.getElementById('accepted');
+                const rejected = document.getElementById('rejected');
+                const viewPhoto = document.getElementById('viewPhoto');
+
+                viewNameInput.value = user.name;
+                viewPhoto.src = user.userImage; 
+
+                if (user.verified === 'notYet') {
+                    viewButton.style.display = 'none';
+                }
+
+                if (user.verified === 'no') accepted.style.display = 'none';
+                if (user.verified === 'yes') rejected.style.display = 'none';
+
+            } catch (error) {
+                console.error(error);
+                alert('Failed to fetch user');
+            }
+        });
+
+        const selectedImage = document.getElementById('selectedImage');
+        let cropper;
+
+        function displayImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    selectedImage.src = e.target.result;
+
+                    
+                    cropper = new Cropper(selectedImage, {
+                        aspectRatio: 1,
+                        viewMode: 2, 
+                    });
+                };
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        const handleUpdate = async () => {
+            
+            const croppedDataUrl = cropper.getCroppedCanvas().toDataURL();
+
+            const updateNameInput = document.getElementById('updateName');
+            const updatedName = updateNameInput.value;
+
+           
+            try {
+                const response = await fetch('http://localhost:8000/api/user/updateDetails', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+                    },
+                    body: JSON.stringify({
+                        name: updatedName,
+                        userImage: croppedDataUrl,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to upload details');
+                }
+
+                const data = await response.json();
+                alert(data.message);
+            } catch (error) {
+                console.error(error);
+                alert('Failed to upload details');
+            }
+        };
+    </script>
+</body>
+
+</html>
